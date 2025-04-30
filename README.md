@@ -1,0 +1,1 @@
+# mindful-eco-impact-ai
