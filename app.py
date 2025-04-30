@@ -5,6 +5,37 @@ import datetime
 import tempfile
 import matplotlib.pyplot as plt
 import io
+import json
+from pathlib import Path
+
+# ---------- Autoryzacja ----------
+def load_users():
+    with open("allowed_users.json") as f:
+        return json.load(f)
+
+def check_login(email, password, users):
+    for u in users:
+        if u["email"] == email and u["password"] == password:
+            return u
+    return None
+
+if "user" not in st.session_state:
+    st.session_state["user"] = None
+
+if not st.session_state["user"]:
+    st.title("🔐 Logowanie do aplikacji")
+    email = st.text_input("Adres e-mail")
+    password = st.text_input("Hasło", type="password")
+    if st.button("Zaloguj"):
+        users = load_users()
+        user = check_login(email, password, users)
+        if user:
+            st.session_state["user"] = user
+            st.success(f"Zalogowano jako {user['name']}")
+            st.experimental_rerun()
+        else:
+            st.error("Nieprawidłowy e-mail lub hasło")
+    st.stop()
 
 # ---------- Konfiguracja ----------
 st.set_page_config(page_title="Mindful Eco Impact AI", page_icon="🌱", layout="wide")
@@ -35,7 +66,7 @@ with st.form("esg_form"):
 # ---------- Obliczenia ----------
 if submitted:
     CO2_FACTORS = {
-        "electricity": 0.0006,  # tCO₂e per kWh
+        "electricity": 0.0006,
         "heating": 0.00025,
         "vehicle": 0.00021,
         "flight": 0.09,
@@ -55,14 +86,24 @@ if submitted:
     st.caption("Wartości szacunkowe oparte na uśrednionych wskaźnikach emisyjności.")
 
     esg_data = {
-        "Zużycie energii elektrycznej (kWh)": electricity_kwh,
-        "Zużycie energii cieplnej (kWh)": heating_kwh,
-        "Samochód firmowy (km)": vehicle_km,
-        "Loty służbowe (h)": flights_hours,
-        "Odpady (kg)": waste_kg
+        "Energia elektryczna": electricity_kwh * CO2_FACTORS["electricity"],
+        "Energia cieplna": heating_kwh * CO2_FACTORS["heating"],
+        "Samochód firmowy": vehicle_km * CO2_FACTORS["vehicle"],
+        "Loty służbowe": flights_hours * CO2_FACTORS["flight"],
+        "Odpady": waste_kg * CO2_FACTORS["waste"]
     }
 
-    # ---------- Generowanie PDF ----------
+    # ---------- Wykres ----------
+    st.subheader("📈 Wykres emisji CO₂e per obszar")
+    fig, ax = plt.subplots()
+    ax.bar(esg_data.keys(), esg_data.values(), color='skyblue')
+    ax.set_title("Emisja CO₂e per obszar")
+    ax.set_ylabel("tCO₂e")
+    plt.xticks(rotation=30, ha="right")
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    # ---------- PDF ----------
     def generate_pdf_report(data, total_emission):
         pdf = FPDF()
         pdf.add_page()
@@ -73,7 +114,7 @@ if submitted:
         pdf.cell(200, 10, txt=f"Data wygenerowania: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
         pdf.ln(5)
         for label, value in data.items():
-            pdf.cell(200, 10, txt=f"{label}: {value}", ln=True)
+            pdf.cell(200, 10, txt=f"{label}: {value:.2f} tCO₂e", ln=True)
         pdf.ln(10)
         pdf.set_font("Arial", "B", 14)
         pdf.cell(200, 10, txt=f"Całkowita emisja CO₂e: {total_emission:.2f} ton", ln=True)
