@@ -32,7 +32,7 @@ if not st.session_state["user"]:
         if user:
             st.session_state["user"] = user
             st.success(f"Zalogowano jako {user['name']}")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Nieprawidłowy e-mail lub hasło")
     st.stop()
