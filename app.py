@@ -113,21 +113,26 @@ if submitted:
         pdf.ln(10)
         pdf.cell(200, 10, txt=f"Data wygenerowania: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
         pdf.ln(5)
+
         for label, value in data.items():
             pdf.cell(200, 10, txt=f"{label}: {value:.2f} tCO₂e", ln=True)
+
         pdf.ln(10)
         pdf.set_font("Arial", "B", 14)
         pdf.cell(200, 10, txt=f"Całkowita emisja CO₂e: {total_emission:.2f} ton", ln=True)
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-        pdf.output(temp_file.name)
-        return temp_file.name
+
+        # 🔁 Zamiast zapisu na dysk — zapis do pamięci
+        pdf_buffer = io.BytesIO()
+        pdf.output(pdf_buffer)
+        pdf_buffer.seek(0)
+        return pdf_buffer
 
     if st.button("📄 Pobierz raport PDF"):
         pdf_path = generate_pdf_report(esg_data, co2_total)
-        with open(pdf_path, "rb") as f:
-            st.download_button(
-                label="📥 Kliknij, aby pobrać PDF",
-                data=f,
-                file_name="raport_co2e.pdf",
-                mime="application/pdf"
-            )
+        pdf_file = generate_pdf_report(esg_data, co2_total)
+        st.download_button(
+            label="📥 Kliknij, aby pobrać PDF",
+            data=pdf_file,
+            file_name="raport_co2e.pdf",
+            mime="application/pdf"
+)
